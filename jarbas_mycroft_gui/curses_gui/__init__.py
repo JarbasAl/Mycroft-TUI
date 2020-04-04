@@ -61,8 +61,3 @@ class CursesGUI(DummyGUI):
             pass
         self.window.clrtobot()
         self.window.refresh()
-
-
-if __name__ == "__main__":
-    gui = CursesGUI(debug=0)
-    gui.run()
