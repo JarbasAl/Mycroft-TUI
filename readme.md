@@ -6,6 +6,9 @@ CLI GUI
 python -m jarbas_mycroft_gui
 ```
 
+press X to exit
+
+
 ![](preview.gif)
 
 
