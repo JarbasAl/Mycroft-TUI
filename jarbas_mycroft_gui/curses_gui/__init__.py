@@ -1,4 +1,4 @@
-from jarbas_mycroft_gui.gui import DummyGUI
+from jarbas_mycroft_gui.mycroft_gui import DummyGUI
 import curses
 from os.path import basename
 from pprint import pformat
