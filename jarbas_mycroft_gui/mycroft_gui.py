@@ -50,7 +50,7 @@ class MycroftGUI(DummyGUI):
                   bg=Screen.COLOUR_WHITE,
                   speed=1),
         ]
-        scenes.append(Scene(effects, 80, name="Splash"))
+        scenes.append(Scene(effects, 60, name="Splash"))
 
         effects = [
             Matrix(self.screen, stop_frame=200),
@@ -59,16 +59,10 @@ class MycroftGUI(DummyGUI):
                 FigletText("Mycroft GUI"),
                 self.screen.height // 2 - 3,
                 Screen.COLOUR_GREEN,
-                start_frame=100,
-                stop_frame=200),
-            Wipe(self.screen, start_frame=150),
-            Cycle(
-                self.screen,
-                FigletText("Mycroft GUI"),
-                self.screen.height // 2 - 3,
-                start_frame=200)
+                start_frame=50,
+                stop_frame=200)
         ]
-        scenes.append(Scene(effects, 250, name="Title"))
+        scenes.append(Scene(effects, 200, name="Title"))
         return scenes
 
     def _refresh(self):
