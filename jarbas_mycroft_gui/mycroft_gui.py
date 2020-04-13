@@ -72,9 +72,12 @@ class MycroftGUI(DummyGUI):
         return scenes
 
     def _refresh(self):
+        last_bug = None
         while True:
-            sleep(1)
-            self.draw()
+            sleep(0.2)
+            if self.buffer != last_bug:
+                last_bug = self.buffer
+                self.draw()
 
     def _run(self, screen, start_scene):
         self.screen = screen

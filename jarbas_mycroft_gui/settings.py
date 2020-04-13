@@ -9,11 +9,8 @@ fonts = ["stampatello", "standard", "soft", "spliff", "smslant", "usa",
 TIME_FONT = "starwars"
 DATE_FONT = "starwars"
 
-"""
-from asciimatics.screen import Screen
 
-TIME_COLOR = Screen.COLOUR_GREEN
-DATE_COLOR = Screen.COLOUR_BLUE
-"""
+from asciimatics.screen import Screen
+BASE_COLOR = Screen.COLOUR_GREEN
 TIME_COLOR = None
 DATE_COLOR = None
