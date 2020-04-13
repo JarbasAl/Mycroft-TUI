@@ -1,192 +1,172 @@
-from jarbas_mycroft_gui.mycroft_gui import DummyGUI
-from pyfiglet import Figlet
-from asciimatics.effects import Scroll, Mirage, Wipe, Cycle, Matrix, Print
-from os.path import dirname, join, basename
-from asciimatics.renderers import FigletText, SpeechBubble, ColourImageFile
-from asciimatics.scene import Scene
-from asciimatics.screen import Screen
-from asciimatics.screen import ManagedScreen
-from asciimatics.exceptions import NextScene, StopApplication
-from asciimatics.event import MouseEvent, KeyboardEvent
-from asciimatics.widgets import Frame, TextBox, Layout, Label, Divider, Text, \
-    PopUpDialog, Background, Widget
-import logging
-
-logging.getLogger("mycroft_bus_client.client.client").setLevel("ERROR")
-logging.getLogger("asciimatics").setLevel("WARN")
+from os import getpid
+from os.path import basename
+import json
 from time import sleep
 from pprint import pformat
-from jarbas_utils import create_daemon
+
+from jarbas_utils.log import LOG
+from jarbas_utils.messagebus import get_mycroft_bus, MessageBusClient,\
+    Message
 
 
-class MycroftGUI(DummyGUI):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.screen = None
+def get_websocket(host, port, route='/', ssl=False, threaded=False):
+    """
+    Returns a connection to a websocket
+    """
+    client = MessageBusClient(host, port, route, ssl)
+    if threaded:
+        client.run_in_thread()
+    return client
 
-    def intro(self):
 
-        scenes = []
+# helper to print in color
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
 
-        text = Figlet(font="banner", width=200).renderText("JARBASAI")
-        width = max([len(x) for x in text.split("\n")])
 
-        effects = [
-            Print(self.screen,
-                  ColourImageFile(self.screen,
-                                  join(dirname(__file__), "logo.gif"),
-                                  self.screen.height - 5,
-                                  uni=self.screen.unicode_aware,
-                                  dither=self.screen.unicode_aware),
-                  y=1),
-            Print(self.screen,
-                  FigletText("JARBASAI", "banner"),
-                  self.screen.height - 9, x=(self.screen.width - width) // 2 + 1,
-                  colour=Screen.COLOUR_BLACK,
-                  bg=Screen.COLOUR_BLACK,
-                  speed=1),
-            Print(self.screen,
-                  FigletText("JARBASAI", "banner"),
-                  self.screen.height - 9,
-                  colour=Screen.COLOUR_WHITE,
-                  bg=Screen.COLOUR_WHITE,
-                  speed=1),
-        ]
-        scenes.append(Scene(effects, 100, name="Splash"))
-
-        effects = [
-            Matrix(self.screen, stop_frame=200),
-            Mirage(
-                self.screen,
-                FigletText("Mycroft"),
-                self.screen.height // 2 - 3,
-                Screen.COLOUR_GREEN,
-                start_frame=100,
-                stop_frame=200),
-            Wipe(self.screen, start_frame=150),
-            Cycle(
-                self.screen,
-                FigletText("Mycroft GUI"),
-                self.screen.height // 2 - 3,
-                start_frame=200)
-        ]
-        scenes.append(Scene(effects, 250, name="Title"))
-        return scenes
-
-    def _refresh(self):
-        while True:
-            sleep(1)
-            self.draw()
-
-    def _run(self, screen):
-        self.screen = screen
-        scenes = self.intro()
-        scenes += [Scene([DisplayFrame(self.screen, self)], -1)]
-        scenes += self.credits()
-        create_daemon(self._refresh)
-        self.screen.play(scenes, repeat=False)
+class DummyGUI:
+    def __init__(self, host="0.0.0.0", port=8181, name=None, debug=False):
+        self.bus = get_mycroft_bus(host, port)
+        self.loaded = []
+        self.skill = None
+        self.page = None
+        self.vars = {}
+        self.mycroft_ip = host
+        self.gui_ws = None
+        self.name = name or self.__class__.__name__.lower()
+        self.debug = debug
+        self.connected = False
+        self.buffer = []
 
     def run(self):
+        last_buffer = []
         if not self.connected:
             self.connect()
-        Screen.wrapper(s._run)
+        while True:
+            sleep(1)
+            if self.buffer != last_buffer:
+                self.draw()
+                last_buffer = self.buffer
+
+    @property
+    def gui_id(self):
+        return self.name + "_" + str(getpid())
+
+    def connect(self):
+        LOG.debug("Announcing GUI")
+        self.bus.on('mycroft.gui.port', self._connect_to_gui)
+        self.bus.emit(Message("mycroft.gui.connected",
+                              {"gui_id": self.gui_id}))
+        self.connected = True
+
+    def _connect_to_gui(self, msg):
+        # Attempt to connect to the port
+        gui_id = msg.data.get("gui_id")
+        if not gui_id == self.gui_id:
+            # Not us, ignore!
+            return
+
+        # Create the websocket for GUI communications
+        port = msg.data.get("port")
+        if port:
+            LOG.info("Connecting GUI on " + str(port))
+            self.gui_ws = get_websocket(host=self.mycroft_ip,
+                                        port=port, route="/gui")
+            self.gui_ws.on("open", self.on_open)
+            self.gui_ws.on("message", self.on_gui_message)
+            self.gui_ws.run_in_thread()
+
+    def on_open(self, message):
+        LOG.debug("Gui connection open")
+
+    def on_gui_message(self, payload):
+        try:
+            msg = json.loads(payload)
+            if self.debug:
+                LOG.debug("Msg: " + str(payload))
+            msg_type = msg.get("type")
+            if msg_type == "mycroft.session.set":
+                self.skill = msg.get("namespace")
+                data = msg.get("data")
+                if self.skill not in self.vars:
+                    self.vars[self.skill] = {}
+                for d in data:
+                    self.vars[self.skill][d] = data[d]
+            elif msg_type == "mycroft.session.list.insert":
+                # Insert new namespace
+                self.skill = msg['data'][0]['skill_id']
+                self.loaded.insert(0, [self.skill, []])
+            elif msg_type == "mycroft.gui.list.insert":
+                # Insert a page in an existing namespace
+                self.page = msg['data'][0]['url']
+                pos = msg.get('position')
+                # TODO sometimes throws IndexError: list index out of range
+                # not invalid json, seems like either pos is out of range or
+                # "mycroft.session.list.insert" message was missed
+                # NOTE: only happened once with wiki skill, cant replicate
+                self.loaded[0][1].insert(pos, self.page)
+                self.skill = self.loaded[0][0]
+            elif msg_type == "mycroft.session.list.move":
+                # Move the namespace at "pos" to the top of the stack
+                pos = msg.get('from')
+                self.loaded.insert(0, self.loaded.pop(pos))
+            elif msg_type == "mycroft.events.triggered":
+                # Switch selected page of namespace
+                self.skill = msg['namespace']
+                pos = msg['data']['number']
+                for n in self.loaded:
+                    if n[0] == self.skill:
+                        # TODO sometimes pos throws
+                        #  IndexError: list index out of range
+                        # ocasionally happens with weather skill
+                        # LOGS:
+                        #   05:38:29.363 - __main__:on_gui_message:56 - DEBUG - Msg: {"type": "mycroft.events.triggered", "namespace": "mycroft-weather.mycroftai", "event_name": "page_gained_focus", "data": {"number": 1}}
+                        #   05:38:29.364 - __main__:on_gui_message:90 - ERROR - list index out of range
+                        self.page = n[1][pos]
+
+            self._draw_buffer()
+        except Exception as e:
+            if self.debug:
+                LOG.exception(e)
+                LOG.error("Invalid JSON: " + str(payload))
 
     def _draw_buffer(self):
-        # TODO use real widgets
         self.buffer = []
         if self.skill:
-            self.buffer.append("Active Skill:" + self.skill)
+            self.buffer.append(
+                bcolors.HEADER + "######################################" +
+                bcolors.ENDC)
+            self.buffer.append(
+                bcolors.OKBLUE + "Active Skill:" + bcolors.ENDC + self.skill)
 
             if self.page:
-                self.buffer.append("Page:" + basename(self.page))
+                self.buffer.append(bcolors.OKBLUE + "Page:" + bcolors.ENDC +
+                                   basename(self.page))
             else:
-                self.buffer.append("Page: None")
+                self.buffer.append(bcolors.OKBLUE + "Page:" + bcolors.ENDC +
+                                   bcolors.WARNING + "None" + bcolors.ENDC)
 
             if self.skill in self.vars:
                 for v in dict(self.vars[self.skill]):
                     if self.vars[self.skill][v]:
-                        self.buffer.append("{}:".format(v))
+                        self.buffer.append(bcolors.OKGREEN + "{}:".format(v)
+                                           + bcolors.ENDC)
                         pretty = pformat(self.vars[self.skill][v])
                         for l in pretty.split("\n"):
                             self.buffer.append("    " + l)
 
     def draw(self):
-        self.screen.force_update()
-
-    def credits(self):
-        scenes = []
-        effects = [Print(self.screen,
-                         SpeechBubble("Exiting GUI"),
-                         self.screen.height // 2 - 1,
-                         attr=Screen.A_BOLD)]
-        scenes.append(Scene(effects, duration=50,
-                            name="Exit", ))
-        effects = [
-
-            Scroll(self.screen, 3),
-            Mirage(
-                self.screen,
-                FigletText("Written by:"),
-                self.screen.height + 8,
-                Screen.COLOUR_GREEN),
-            Mirage(
-                self.screen,
-                FigletText("JarbasAi"),
-                self.screen.height + 16,
-                Screen.COLOUR_GREEN)
-        ]
-
-        scenes.append(Scene(effects, (self.screen.height + 24) * 3,
-                            name="Credits"))
-        return scenes
-
-
-class DisplayWidget(Label):
-    def __init__(self, gui):
-        self.gui = gui
-        super().__init__(None)
-
-    def update(self, frame_no):
-        (colour, attr, bg) = self._frame.palette[
-            self._pick_palette_key("label", selected=False,
-                                   allow_input_state=False)]
-        for i, text in enumerate(self.gui.buffer):
-            self._frame.canvas.paint(
-                "{:{}{}}".format(text, self._align, self._w), self._x,
-                self._y + i, colour, attr, bg)
-        self._value = "\n".join(self.gui.buffer)
-
-
-class DisplayFrame(Frame):
-    def __init__(self, screen, gui):
-        super(DisplayFrame, self).__init__(screen, screen.height, screen.width,
-                                           has_shadow=False, has_border=False,
-                                           name="GUI")
-        layout = Layout([100], fill_frame=True)
-        self.add_layout(layout)
-        d = DisplayWidget(gui)
-        layout.add_widget(d)
-        self.fix()
-        self.set_theme("monochrome")
-
-    def process_event(self, event):
-        if isinstance(event, KeyboardEvent):
-            if event.key_code == 120 or event.key_code == 88:  # press x
-                raise NextScene("Exit")
-            else:
-                # Ignore any other key press.
-                return event
-        elif isinstance(event, MouseEvent):
-            # Ignore other mouse events.
-            return event
-        else:
-            # Ignore other events
-            return event
-
-        # If we got here, we processed the event - swallow it.
-        return None
+        for line in self.buffer:
+            print(line)
 
 
 if __name__ == "__main__":
-    s = MycroftGUI()
-    s.run()
+    gui = DummyGUI()
+    gui.run()
