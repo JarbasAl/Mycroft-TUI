@@ -4,6 +4,7 @@ from asciimatics.effects import Scroll, Mirage, Wipe, Cycle, Matrix, Print
 from os.path import dirname, join, basename
 from asciimatics.renderers import FigletText, SpeechBubble, ColourImageFile
 from asciimatics.scene import Scene
+from asciimatics.exceptions import ResizeScreenError
 from asciimatics.screen import Screen
 import logging
 from jarbas_mycroft_gui.widgets import DisplayFrame
@@ -75,18 +76,25 @@ class MycroftGUI(DummyGUI):
             sleep(1)
             self.draw()
 
-    def _run(self, screen):
+    def _run(self, screen, start_scene):
         self.screen = screen
         scenes = self.intro()
         scenes += [Scene([DisplayFrame(self.screen, self)], -1)]
         scenes += self.credits()
         create_daemon(self._refresh)
-        self.screen.play(scenes, repeat=False)
+        self.screen.play(scenes, repeat=False, stop_on_resize=True,
+                         start_scene=start_scene)
 
     def run(self):
         if not self.connected:
             self.connect()
-        Screen.wrapper(self._run)
+
+        last_scene = None
+        while True:
+            try:
+                Screen.wrapper(self._run, arguments=[last_scene])
+            except ResizeScreenError as e:
+                last_scene = e.scene
 
     def _draw_buffer(self):
         # TODO use real widgets
@@ -139,5 +147,9 @@ class MycroftGUI(DummyGUI):
 
 
 if __name__ == "__main__":
+
+
+
+
     s = MycroftGUI()
     s.run()
