@@ -70,6 +70,7 @@ class LogMonitorThread(Thread):
                     clean = self.logid + " | ".join([level.strip(),
                                                      name.strip(),
                                                      msg.strip()])
+
                     if clean in logs[self.logid]:
                         # suppress duplicates
                         logs[self.logid].remove(clean)

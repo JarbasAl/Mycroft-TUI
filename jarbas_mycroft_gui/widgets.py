@@ -106,7 +106,7 @@ class VariablesWidget(BaseWidget):
             self.pages.append(pretty)
 
     def update(self, frame_no):
-        self.motd = ["Active Skill: " + self.active_skill]
+        self.motd = ["Active Skill: " + str(self.active_skill)]
         y_pad = self.render_title()
         if self.active_skill in self.page_data:
             data = self.page_data[self.active_skill]

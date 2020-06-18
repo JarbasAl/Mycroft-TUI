@@ -92,12 +92,12 @@ class DummyGUI:
     def on_gui_message(self, payload):
         try:
             msg = json.loads(payload)
-
             if self.debug:
                 LOG.debug("Msg: " + str(payload))
             msg_type = msg.get("type")
             if msg_type == "mycroft.session.set":
                 skill = msg.get("namespace")
+                self.skill = self.skill or skill
                 data = msg.get("data")
                 if skill not in self.vars:
                     self.vars[skill] = {}
@@ -122,9 +122,16 @@ class DummyGUI:
                 # Move the namespace at "pos" to the top of the stack
                 pos = msg.get('from')
                 self.loaded.insert(0, self.loaded.pop(pos))
+            elif msg_type == "mycroft.session.list.remove":
+                pos = msg.get('position')
+                skill = msg.get("namespace")
+                if self.skill == skill:
+                    self.skill = None
+                self.loaded.pop(pos)
             elif msg_type == "mycroft.events.triggered":
                 # Switch selected page of namespace
                 skill = msg['namespace']
+                self.skill = self.skill or skill
                 pos = msg['data']['number']
                 for n in self.loaded:
                     if n[0] == skill:
