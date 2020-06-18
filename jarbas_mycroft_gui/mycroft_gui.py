@@ -7,8 +7,8 @@ from asciimatics.scene import Scene
 from asciimatics.exceptions import ResizeScreenError
 from asciimatics.screen import Screen
 import logging
-from jarbas_mycroft_gui.pages import VariablesScreen, TimeScreen, HelpScreen
-from jarbas_mycroft_gui.settings import BASE_COLOR
+from jarbas_mycroft_gui.pages import VariablesScreen, TimeScreen, HelpScreen, LogsScreen
+from jarbas_mycroft_gui.settings import DEFAULT_COLOR
 import sys
 from asciimatics.exceptions import NextScene
 logging.getLogger("mycroft_bus_client.client.client").setLevel("ERROR")
@@ -27,6 +27,7 @@ class MycroftGUI(DummyGUI):
     def pages(self):
         scenes = [Scene([TimeScreen(self.screen, self)], -1, name="Time")]
         scenes += [Scene([HelpScreen(self.screen, self)], -1, name="Help")]
+        scenes += [Scene([LogsScreen(self.screen, self)], -1, name="Logs")]
 
         return scenes
 
@@ -37,7 +38,7 @@ class MycroftGUI(DummyGUI):
                 self.screen,
                 FigletText("Mycroft GUI"),
                 self.screen.height // 2 - 3,
-                BASE_COLOR,
+                DEFAULT_COLOR,
                 start_frame=20,
                 stop_frame=150)
         ]

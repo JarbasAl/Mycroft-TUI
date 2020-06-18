@@ -1,3 +1,5 @@
+from asciimatics.screen import Screen
+
 """
 # Non exhaustive list
 fonts = ["stampatello", "standard", "soft", "spliff", "smslant", "usa",
@@ -10,17 +12,23 @@ TIME_FONT = "starwars"
 DATE_FONT = "starwars"
 TITLE_FONT = "small"
 
-
-from asciimatics.screen import Screen
-BASE_COLOR = Screen.COLOUR_BLUE
+DEFAULT_COLOR = Screen.COLOUR_BLUE
 TIME_COLOR = None
 DATE_COLOR = None
 
 
 def change_color(new_color):
-    global BASE_COLOR
-    BASE_COLOR = new_color
+    global DEFAULT_COLOR
+    DEFAULT_COLOR = new_color
 
 
 def get_color():
-    return BASE_COLOR
+    return DEFAULT_COLOR
+
+
+LOGS = [
+    "/var/log/mycroft/skills.log",
+    "/var/log/mycroft/audio.log",
+    "/var/log/mycroft/voice.log",
+    "/var/log/mycroft/enclosure.log"
+]

@@ -2,7 +2,8 @@ from asciimatics.exceptions import NextScene
 from asciimatics.event import MouseEvent, KeyboardEvent
 from asciimatics.widgets import Frame, Layout
 from asciimatics.screen import Screen
-from jarbas_mycroft_gui.widgets import HelpWidget, VariablesWidget, TimeWidget
+from jarbas_mycroft_gui.widgets import HelpWidget, VariablesWidget, \
+    TimeWidget, LogsWidget
 from jarbas_mycroft_gui.settings import change_color
 
 
@@ -82,6 +83,17 @@ class HelpScreen(BaseScreen):
         layout = Layout([100], fill_frame=False)
         self.add_layout(layout)
         d = HelpWidget(gui, screen)
+        layout.add_widget(d)
+
+
+class LogsScreen(BaseScreen):
+    def __init__(self, screen, gui, has_shadow=False, has_border=False,
+                 name="Logs"):
+        super().__init__(screen, gui, has_shadow=has_shadow,
+                         has_border=has_border, name=name)
+        layout = Layout([100], fill_frame=False)
+        self.add_layout(layout)
+        d = LogsWidget(gui, screen)
         layout.add_widget(d)
 
 

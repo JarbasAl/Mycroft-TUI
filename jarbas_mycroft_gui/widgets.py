@@ -1,7 +1,8 @@
 from asciimatics.widgets import Label
 from jarbas_mycroft_gui.settings import TIME_COLOR, TIME_FONT, \
-    DATE_COLOR, DATE_FONT, get_color, TITLE_FONT
+    DATE_COLOR, DATE_FONT, get_color, LOGS
 from jarbas_mycroft_gui.render import pretty_dict, pretty_title
+from jarbas_mycroft_gui.monitoring import start_log_monitor, filteredLog
 import datetime
 
 
@@ -112,3 +113,19 @@ class HelpWidget(BaseWidget):
         self.render(keys.split("\n"), y=y_pad)
 
 
+class LogsWidget(BaseWidget):
+    def __init__(self, gui, screen):
+        super().__init__(gui, screen)
+        for log in LOGS:
+            start_log_monitor(log)
+
+    def update(self, frame_no):
+        title = pretty_title("Logs")
+        self.render(title.split("\n"))
+        y_pad = len(title.split("\n")) + 1
+        draw = []
+        num = self.screen.height - y_pad
+        logs = list(reversed(filteredLog))[:num]
+        for l in reversed(logs):
+            draw.append(l.strip())
+        self.render(draw, y=y_pad)

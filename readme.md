@@ -10,8 +10,13 @@ press X to exit
 
 
 ![](preview.gif)
+
 ![](help.png)
+
 ![](variables.png)
+
+![](logs.png)
+
 ![](colors.gif)
 
 GUI debugger 
