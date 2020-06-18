@@ -86,6 +86,9 @@ class DummyGUI:
     def on_open(self, message):
         LOG.debug("Gui connection open")
 
+    def on_new_gui_data(self, data):
+        pass
+
     def on_gui_message(self, payload):
         try:
             msg = json.loads(payload)
@@ -94,12 +97,13 @@ class DummyGUI:
                 LOG.debug("Msg: " + str(payload))
             msg_type = msg.get("type")
             if msg_type == "mycroft.session.set":
-                self.skill = msg.get("namespace")
+                skill = msg.get("namespace")
                 data = msg.get("data")
-                if self.skill not in self.vars:
-                    self.vars[self.skill] = {}
+                if skill not in self.vars:
+                    self.vars[skill] = {}
                 for d in data:
-                    self.vars[self.skill][d] = data[d]
+                    self.vars[skill][d] = data[d]
+                self.on_new_gui_data(data)
             elif msg_type == "mycroft.session.list.insert":
                 # Insert new namespace
                 self.skill = msg['data'][0]['skill_id']
@@ -113,17 +117,17 @@ class DummyGUI:
                 # "mycroft.session.list.insert" message was missed
                 # NOTE: only happened once with wiki skill, cant replicate
                 self.loaded[0][1].insert(pos, self.page)
-                self.skill = self.loaded[0][0]
+                #self.skill = self.loaded[0][0]
             elif msg_type == "mycroft.session.list.move":
                 # Move the namespace at "pos" to the top of the stack
                 pos = msg.get('from')
                 self.loaded.insert(0, self.loaded.pop(pos))
             elif msg_type == "mycroft.events.triggered":
                 # Switch selected page of namespace
-                self.skill = msg['namespace']
+                skill = msg['namespace']
                 pos = msg['data']['number']
                 for n in self.loaded:
-                    if n[0] == self.skill:
+                    if n[0] == skill:
                         # TODO sometimes pos throws
                         #  IndexError: list index out of range
                         # ocasionally happens with weather skill

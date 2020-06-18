@@ -16,6 +16,12 @@ DEFAULT_COLOR = Screen.COLOUR_BLUE
 TIME_COLOR = None
 DATE_COLOR = None
 
+DEBUG = False
+DEBUG_COLOR = Screen.COLOUR_BLUE
+INFO_COLOR = Screen.COLOUR_CYAN
+WARNING_COLOR = Screen.COLOUR_YELLOW
+ERROR_COLOR = Screen.COLOUR_RED
+
 
 def change_color(new_color):
     global DEFAULT_COLOR
@@ -30,5 +36,14 @@ LOGS = [
     "/var/log/mycroft/skills.log",
     "/var/log/mycroft/audio.log",
     "/var/log/mycroft/voice.log",
-    "/var/log/mycroft/enclosure.log"
+    "/var/log/mycroft/enclosure.log",
+    "/var/log/mycroft/bus.log"
+]
+
+LOGS = [
+    "/home/user/PycharmProjects/Mycroft_Bash_GUI/skills.log",
+    "/home/user/PycharmProjects/Mycroft_Bash_GUI/audio.log",
+    "/home/user/PycharmProjects/Mycroft_Bash_GUI/voice.log",
+    "/home/user/PycharmProjects/Mycroft_Bash_GUI/enclosure.log",
+    "/home/user/PycharmProjects/Mycroft_Bash_GUI/bus.log"
 ]

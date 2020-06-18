@@ -3,7 +3,7 @@ from asciimatics.event import MouseEvent, KeyboardEvent
 from asciimatics.widgets import Frame, Layout
 from asciimatics.screen import Screen
 from jarbas_mycroft_gui.widgets import HelpWidget, VariablesWidget, \
-    TimeWidget, LogsWidget
+    TimeWidget, LogsWidget, NetworkWidget, BusWidget
 from jarbas_mycroft_gui.settings import change_color
 
 
@@ -52,6 +52,9 @@ class BaseScreen(Frame):
             elif event.key_code == ord('m') or event.key_code == ord('M'):
                 # press m
                 raise NextScene("Bus")
+            elif event.key_code == ord('n') or event.key_code == ord('N'):
+                # press n
+                raise NextScene("Network")
             elif event.key_code == ord('r') or event.key_code == ord('R'):
                 # press r
                 change_color(Screen.COLOUR_RED)
@@ -83,6 +86,17 @@ class HelpScreen(BaseScreen):
         layout = Layout([100], fill_frame=False)
         self.add_layout(layout)
         d = HelpWidget(gui, screen)
+        layout.add_widget(d)
+
+
+class NetworkScreen(BaseScreen):
+    def __init__(self, screen, gui, has_shadow=False, has_border=False,
+                 name="Network"):
+        super().__init__(screen, gui, has_shadow=has_shadow,
+                         has_border=has_border, name=name)
+        layout = Layout([100], fill_frame=False)
+        self.add_layout(layout)
+        d = NetworkWidget(gui, screen)
         layout.add_widget(d)
 
 
@@ -118,3 +132,13 @@ class VariablesScreen(BaseScreen):
         d = VariablesWidget(gui, screen)
         layout.add_widget(d)
 
+
+class BusScreen(BaseScreen):
+    def __init__(self, screen, gui, has_shadow=False, has_border=False,
+                 name="Bus"):
+        super().__init__(screen, gui, has_shadow=has_shadow,
+                         has_border=has_border, name=name)
+        layout = Layout([100], fill_frame=False)
+        self.add_layout(layout)
+        d = BusWidget(gui, screen)
+        layout.add_widget(d)

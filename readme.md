@@ -17,6 +17,10 @@ press X to exit
 
 ![](logs.png)
 
+![](network.png)
+
+![](bus.png)
+
 ![](colors.gif)
 
 GUI debugger 
