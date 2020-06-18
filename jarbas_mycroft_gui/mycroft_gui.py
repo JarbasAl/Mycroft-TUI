@@ -7,13 +7,16 @@ from asciimatics.scene import Scene
 from asciimatics.exceptions import ResizeScreenError
 from asciimatics.screen import Screen
 import logging
-from jarbas_mycroft_gui.widgets import DisplayFrame
-
+from jarbas_mycroft_gui.pages import VariablesScreen, TimeScreen, HelpScreen
+from jarbas_mycroft_gui.settings import BASE_COLOR
+import sys
+from asciimatics.exceptions import NextScene
 logging.getLogger("mycroft_bus_client.client.client").setLevel("ERROR")
 logging.getLogger("asciimatics").setLevel("WARN")
 from time import sleep
 from pprint import pformat
 from jarbas_utils import create_daemon
+from jarbas_utils.log import LOG
 
 
 class MycroftGUI(DummyGUI):
@@ -21,9 +24,24 @@ class MycroftGUI(DummyGUI):
         super().__init__(*args, **kwargs)
         self.screen = None
 
-    def intro(self):
+    def pages(self):
+        scenes = [Scene([TimeScreen(self.screen, self)], -1, name="Time")]
+        scenes += [Scene([HelpScreen(self.screen, self)], -1, name="Help")]
 
+        return scenes
+
+    def intro(self):
         scenes = []
+        effects = [
+            Mirage(
+                self.screen,
+                FigletText("Mycroft GUI"),
+                self.screen.height // 2 - 3,
+                BASE_COLOR,
+                start_frame=20,
+                stop_frame=150)
+        ]
+        scenes.append(Scene(effects, 200, name="Splash"))
 
         text = Figlet(font="banner", width=200).renderText("JARBASAI")
         width = max([len(x) for x in text.split("\n")])
@@ -50,19 +68,7 @@ class MycroftGUI(DummyGUI):
                   bg=Screen.COLOUR_WHITE,
                   speed=1),
         ]
-        scenes.append(Scene(effects, 60, name="Splash"))
-
-        effects = [
-            Matrix(self.screen, stop_frame=200),
-            Mirage(
-                self.screen,
-                FigletText("Mycroft GUI"),
-                self.screen.height // 2 - 3,
-                Screen.COLOUR_GREEN,
-                start_frame=50,
-                stop_frame=200)
-        ]
-        scenes.append(Scene(effects, 200, name="Title"))
+        scenes.append(Scene(effects, duration=30, name="Jarbas"))
         return scenes
 
     def _refresh(self):
@@ -73,25 +79,39 @@ class MycroftGUI(DummyGUI):
                 last_bug = self.buffer
                 self.draw()
 
-    def _run(self, screen, start_scene):
+    def on_message(self, message):
+        msg_type = message.get("type")
+        if msg_type == "mycroft.session.set":
+            skill = message.get("namespace")
+            if skill == "mycroft-date-time.mycroftai":
+                raise NextScene("Time")
+            else:
+                raise NextScene("Variables")
+
+    def _run(self, screen, start_scene=None):
         self.screen = screen
-        scenes = self.intro()
-        scenes += [Scene([DisplayFrame(self.screen, self)], -1)]
+        intro = self.intro()
+        scenes = self.pages()
+        scenes += intro
+        scenes += [Scene([VariablesScreen(self.screen, self)], -1,
+                         name="Variables")]
         scenes += self.credits()
         create_daemon(self._refresh)
-        self.screen.play(scenes, repeat=False, stop_on_resize=True,
-                         start_scene=start_scene)
+        self.screen.play(scenes,
+                         repeat=False,
+                         stop_on_resize=True,
+                         start_scene=start_scene or intro[0])
 
-    def run(self):
+    def run(self, start_scene=None):
         if not self.connected:
             self.connect()
-
-        last_scene = None
-        while True:
-            try:
-                Screen.wrapper(self._run, arguments=[last_scene])
-            except ResizeScreenError as e:
-                last_scene = e.scene
+        try:
+            Screen.wrapper(self._run, arguments=[start_scene])
+        except ResizeScreenError as e:
+            self.run(e.scene)
+        except Exception as e:
+            LOG.exception(e)
+            sys.exit(0)
 
     def _draw_buffer(self):
         # TODO use real widgets
@@ -121,32 +141,12 @@ class MycroftGUI(DummyGUI):
                          SpeechBubble("Exiting GUI"),
                          self.screen.height // 2 - 1,
                          attr=Screen.A_BOLD)]
-        scenes.append(Scene(effects, duration=50,
+        scenes.append(Scene(effects, duration=10,
                             name="Exit", ))
-        effects = [
 
-            Scroll(self.screen, 3),
-            Mirage(
-                self.screen,
-                FigletText("Written by:"),
-                self.screen.height + 8,
-                Screen.COLOUR_GREEN),
-            Mirage(
-                self.screen,
-                FigletText("JarbasAi"),
-                self.screen.height + 16,
-                Screen.COLOUR_GREEN)
-        ]
-
-        scenes.append(Scene(effects, (self.screen.height + 24) * 3,
-                            name="Credits"))
         return scenes
 
 
 if __name__ == "__main__":
-
-
-
-
     s = MycroftGUI()
     s.run()

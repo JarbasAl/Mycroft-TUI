@@ -89,6 +89,7 @@ class DummyGUI:
     def on_gui_message(self, payload):
         try:
             msg = json.loads(payload)
+
             if self.debug:
                 LOG.debug("Msg: " + str(payload))
             msg_type = msg.get("type")
@@ -132,10 +133,14 @@ class DummyGUI:
                         self.page = n[1][pos]
 
             self._draw_buffer()
+            self.on_message(msg)
         except Exception as e:
             if self.debug:
                 LOG.exception(e)
                 LOG.error("Invalid JSON: " + str(payload))
+
+    def on_message(self, message):
+        pass
 
     def _draw_buffer(self):
         self.buffer = []
@@ -168,45 +173,5 @@ class DummyGUI:
 
 
 if __name__ == "__main__":
-    from rich.console import Console
-    from rich.table import Column, Table
-
-    class RichDraw(Console):
-        def __init__(self):
-            super().__init__(record=True)
-
-        def _check_buffer(self) -> None:
-            """Check if the buffer may be rendered."""
-            if self._buffer_index == 0:
-                text = self._render_buffer()
-
-    console = RichDraw()
-
-    table = Table(show_header=True, header_style="bold magenta")
-    table.add_column("Date", justify="center")
-    table.add_column("Title", justify="center")
-    table.add_column("Production Budget", justify="center")
-    table.add_column("Box Office", justify="center")
-    table.add_row(
-        "Dev 20, 2019", "Star Wars: The Rise of Skywalker", "$275,000,0000",
-        "$375,126,118"
-    )
-    table.add_row(
-        "May 25, 2018",
-        "[red]Solo[/red]: A Star Wars Story",
-        "$275,000,0000",
-        "$393,151,347",
-    )
-    table.add_row(
-        "Dec 15, 2017",
-        "Star Wars Ep. VIII: The Last Jedi",
-        "$262,000,000",
-        "[bold]$1,332,539,889[/bold]",
-    )
-    console.print(table)
-
-    s = console.export_text(styles=True)
-    print(s)
-    exit()
     gui = DummyGUI()
     gui.run()
