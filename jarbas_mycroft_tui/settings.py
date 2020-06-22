@@ -43,10 +43,3 @@ LOGS = [
     "/var/log/mycroft/bus.log"
 ]
 
-LOGS = [
-    "/home/user/PycharmProjects/Mycroft_Bash_GUI/skills.log",
-    "/home/user/PycharmProjects/Mycroft_Bash_GUI/audio.log",
-    "/home/user/PycharmProjects/Mycroft_Bash_GUI/voice.log",
-    "/home/user/PycharmProjects/Mycroft_Bash_GUI/enclosure.log",
-    "/home/user/PycharmProjects/Mycroft_Bash_GUI/bus.log"
-]
