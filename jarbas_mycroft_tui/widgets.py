@@ -1,13 +1,15 @@
-from asciimatics.widgets import Label
-from jarbas_mycroft_gui.settings import TIME_COLOR, TIME_FONT, \
+from asciimatics.widgets import Label, Text, Screen
+from asciimatics.event import KeyboardEvent
+from jarbas_mycroft_tui.settings import TIME_COLOR, TIME_FONT, \
     DATE_COLOR, DATE_FONT, get_color, LOGS, DEBUG_COLOR, INFO_COLOR, \
-    WARNING_COLOR, ERROR_COLOR, DEBUG
-from jarbas_mycroft_gui.render import pretty_dict, pretty_title
-from jarbas_mycroft_gui.monitoring import start_log_monitor, mergedLog
+    WARNING_COLOR, ERROR_COLOR, DEBUG, INPUT_COLOR, OUTPUT_COLOR
+from jarbas_mycroft_tui.render import pretty_dict, pretty_title
+from jarbas_mycroft_tui.monitoring import start_log_monitor, mergedLog
 import datetime
 import random
 import time
-from jarbas_mycroft_gui.bus import fake_bus, Message
+from jarbas_mycroft_tui.bus import fake_bus, Message
+from jarbas_mycroft_tui.util import camel_case_split
 
 
 class BaseWidget(Label):
@@ -19,6 +21,7 @@ class BaseWidget(Label):
         self._active_skill = "None"
         self._vars = {}
         self.motd = []
+        self.footer = ["press X to Exit, press H for Help"]
         self.needs_refresh = False
         super().__init__(None)
         fake_bus.on("gui.cli.refresh_check", self.check_if_refresh)
@@ -50,6 +53,22 @@ class BaseWidget(Label):
             y_pad += len(motd.split("\n")) + 1
         return y_pad
 
+    def render_footer(self):
+        # only change footer on new minutes
+        seed = str(datetime.datetime.now().hour) + \
+               str(datetime.datetime.now().day) + \
+               str(datetime.datetime.now().month) + \
+               str(datetime.datetime.now().minute) + \
+               str(datetime.datetime.now().year)
+        random.seed(int(seed))
+
+        if len(self.footer):
+            motd = random.choice(self.footer)
+            self._frame.canvas.paint(motd,
+                                     y=self.screen.height - len(
+                                         motd.split("\n")),
+                                     x=0)
+
     @property
     def active_skill(self):
         return self.gui.skill
@@ -69,22 +88,26 @@ class BaseWidget(Label):
         # update
         x = x or self._x
         y = y or self._y
+        if y == self.screen.height - 1:
+            return  # reserved for footer
         (colour, attr, bg) = self._frame.palette[
             self._pick_palette_key("label", selected=False,
                                    allow_input_state=False)]
-        if not color:
+        if color is None:
             color = get_color() or colour
         for i, text in enumerate(buffer):
             self._frame.canvas.paint(
                 "{:{}{}}".format(text, self._align, self._w), x, y + i,
                 color, attr, bg)
+            if y + i == self.screen.height - 1:
+                break  # reserved for footer
 
 
 class VariablesWidget(BaseWidget):
     def __init__(self, gui, screen, title="Variables"):
+        super().__init__(gui, screen, title)
         self.old_vars = {}
         self.pages = []
-        super().__init__(gui, screen, title)
 
     def check_if_refresh(self, message=None):
         if self.active_skill not in self.page_data:
@@ -117,6 +140,7 @@ class VariablesWidget(BaseWidget):
                                                      "viseme"])
             self.pages.insert(0, pretty)
             self.render(pretty.split("\n"), y=y_pad)
+            self.render_footer()
 
 
 class TimeWidget(BaseWidget):
@@ -135,8 +159,10 @@ class TimeWidget(BaseWidget):
 
     def update(self, frame_no):
         try:
-            time_str = self.page_data["mycroft-date-time.mycroftai"]["time_string"]
-            date_str = self.page_data["mycroft-date-time.mycroftai"]["date_string"]
+            time_str = self.page_data["mycroft-date-time.mycroftai"][
+                "time_string"]
+            date_str = self.page_data["mycroft-date-time.mycroftai"][
+                "date_string"]
         except:
             time_str = ""
             date_str = ""
@@ -162,24 +188,21 @@ class TimeWidget(BaseWidget):
 
 class HelpWidget(BaseWidget):
     def __init__(self, gui, screen, title="Help"):
-        self.keys = {
-            "H": "Help Screen",
-            "P": "Picture Mode",
-            "V": "Variables Mode",
-            "C": "CommandLine chat",
-            "M": "MessageBus monitor",
-            "L": "Logs Viewer",
-            "N": "Network Logs",
-            "S": "Skills Viewer",
-            "A": "AudioService Screen",
-            "T": "Clock Screen",
-            "R": "Change color to Red",
-            "G": "Change color to Green",
-            "B": "Change color to Blue",
-            "J": "Credits",
-            "X": "Exit"
-        }
         super().__init__(gui, screen, title)
+        self.rows = [
+            {"U": "Utterances",
+             "M": "MessageBus monitor",
+             "L": "Logs Viewer",
+             "V": "GUI Variables",
+             "N": "Network Logs",
+             "R": "Change color to Red",
+             "G": "Change color to Green",
+             "B": "Change color to Blue",
+             "T": "Clock Screen",
+             "H": "Help Screen",
+             "X": "Exit"}
+        ]
+
         self.motd = [
             "Found an issue?\nhttps://github.com/JarbasAl/Mycroft_cli_GUI",
             "Yes, this is beta and buggy"
@@ -187,8 +210,10 @@ class HelpWidget(BaseWidget):
 
     def update(self, frame_no):
         y_pad = self.render_title()
-        keys = pretty_dict(self.keys)
-        self.render(keys.split("\n"), y=y_pad)
+        for row in self.rows:
+            keys = pretty_dict(row)
+            self.render(keys.split("\n"), y=y_pad)
+            y_pad += len(keys.split("\n"))
 
 
 class LogsWidget(BaseWidget):
@@ -267,6 +292,7 @@ class LogsWidget(BaseWidget):
                 color = WARNING_COLOR
             self.render(clean, y=y_pad, color=color)
             y_pad += 1
+        self.render_footer()
 
 
 class NetworkWidget(LogsWidget):
@@ -333,7 +359,7 @@ class BusWidget(BaseWidget):
         self.buffer.append(message)
         self.needs_refresh = True
 
-    def get_logs(self, num=20):
+    def get_messages(self, num=20):
         if len(self.buffer) > num:
             self.buffer = self.buffer[-1 * num:]
         return self.buffer
@@ -341,7 +367,162 @@ class BusWidget(BaseWidget):
     def update(self, frame_no):
         y_pad = self.render_title()
         num = self.screen.height - y_pad
-        for l in self.get_logs(num):
+        for l in self.get_messages(num):
             clean = [l.strip()]
             self.render(clean, y=y_pad)
             y_pad += 1
+        self.render_footer()
+
+
+class UtterancesWidget(BaseWidget):
+    def __init__(self, gui, screen, title="Utterances"):
+        super().__init__(gui, screen, title)
+        self.msg_filters = []
+        self.motd = [
+            "Chat with mycroft"
+        ]
+        self.buffer = []
+        self.gui.bus.on("speak", self.handle_speak)
+        self.gui.bus.on("recognizer_loop:utterance", self.handle_utterance)
+
+    def handle_utterance(self, message):
+        platform = message.context.get("platform") or \
+                   message.context.get("client_name")
+        source = message.context.get("source") or "Broadcast"
+        words = camel_case_split(source).split(" ")
+        source = " ".join(w.capitalize() for w in words)
+        if platform:
+            words = camel_case_split(platform).split(" ")
+            platform = " ".join(w.capitalize() for w in words)
+            source += " ({sauce})".format(sauce=platform)
+        message = source + ": " + message.data["utterances"][0]
+        message = "INPUT |" + message
+        self.buffer.append(message)
+        self.needs_refresh = True
+
+    def handle_speak(self, message):
+        source = message.context.get("destination") or "Broadcast"
+        words = camel_case_split(source).split(" ")
+        source = " ".join(w.capitalize() for w in words)
+        source = "Mycroft ({sauce}): ".format(sauce=source)
+        message = source + message.data["utterance"]
+        message = "OUTPUT |" + message
+        self.buffer.append(message)
+        self.needs_refresh = True
+
+    def utterances(self, num=20):
+        if len(self.buffer) > num:
+            self.buffer = self.buffer[-1 * num:]
+        return self.buffer
+
+    def update(self, frame_no):
+        y_pad = self.render_title()
+        num = self.screen.height - y_pad
+        for l in self.utterances(num):
+            color = None
+            if "INPUT |" in l:
+                color = INPUT_COLOR
+            elif "OUTPUT |" in l:
+                color = OUTPUT_COLOR
+            clean = [l.replace("OUTPUT |", "").replace("INPUT |", "").strip()]
+            self.render(clean, y=y_pad, color=color)
+            y_pad += 1
+            if y_pad == self.screen.height - 2:
+                break
+        self.render_footer()
+
+
+class UtteranceInput(Text):
+    def __init__(self, gui, screen, title="Input"):
+        self.title = title
+        self.gui = gui
+        self.screen = screen
+        self.input_enabled = False
+        super().__init__(on_change=self.update)
+
+    def update(self, frame_no=0):
+        # enforce bottom of screen
+        self._y = self.screen.height - 2
+        color = get_color()
+        self._frame.canvas.paint("Input: " + self.value, x=0, y=self._y,
+                                 colour=color)
+        if self.input_enabled:
+            self._frame.canvas.paint("Press Ctrl+X to disable input", x=0,
+                                     y=self.screen.height - 1)
+        else:
+            self._frame.canvas.paint("Press Ctrl+I to enable input", x=0,
+                                     y=self.screen.height - 1)
+
+    def handle_input(self):
+        utterance = self.value
+        if utterance:
+            self.gui.bus.emit(
+                Message("recognizer_loop:utterance",
+                        {"utterances": [utterance]},
+                        {"source": "Admin Panel",
+                         "destination": "skills"}))
+        self.value = ""
+
+    def process_event(self, event):
+        if isinstance(event, KeyboardEvent):
+            if not self.input_enabled and \
+                    (event.key_code == Screen.ctrl("i") or
+                     event.key_code == -301):
+                self.input_enabled = True
+                # self.update(0)
+            elif self.input_enabled and event.key_code == Screen.ctrl("x"):
+                self.input_enabled = False
+                # self.update(0)
+            elif not self.input_enabled:
+                return event
+            elif event.key_code == 10:
+                self.handle_input()
+            elif event.key_code == Screen.KEY_BACK:
+                if self._column > 0:
+                    # Delete character in front of cursor.
+                    self._set_and_check_value(
+                        "".join([self._value[:self._column - 1],
+                                 self._value[self._column:]]))
+                    self._column -= 1
+            elif event.key_code == Screen.KEY_DELETE:
+                if self._column < len(self._value):
+                    self._set_and_check_value(
+                        "".join([self._value[:self._column],
+                                 self._value[self._column + 1:]]))
+            elif event.key_code == Screen.KEY_LEFT:
+                self._column -= 1
+                self._column = max(self._column, 0)
+            elif event.key_code == Screen.KEY_RIGHT:
+                self._column += 1
+                self._column = min(len(self._value), self._column)
+            elif event.key_code == Screen.KEY_HOME:
+                self._column = 0
+            elif event.key_code == Screen.KEY_END:
+                self._column = len(self._value)
+            elif event.key_code >= 32:
+                # Enforce required max length - swallow event if not allowed
+                if self._max_length is None or len(
+                        self._value) < self._max_length:
+                    # Insert any visible text at the current cursor position.
+                    self._set_and_check_value(chr(event.key_code)
+                        .join(
+                        [self._value[:self._column],
+                         self._value[self._column:]]))
+                    self._column += 1
+            else:
+                # Ignore any other key press.
+                return event
+        else:
+            # Ignore other events
+            return event
+
+        # If we got here, we processed the event - swallow it
+        return None
+
+
+class WIPWidget(BaseWidget):
+    def __init__(self, gui, screen, title="Not Implemented"):
+        super().__init__(gui, screen, title)
+        self.motd = [
+            "Contribute: \nhttps://github.com/JarbasAl/Mycroft_cli_GUI"
+        ]

@@ -22,6 +22,9 @@ INFO_COLOR = Screen.COLOUR_CYAN
 WARNING_COLOR = Screen.COLOUR_YELLOW
 ERROR_COLOR = Screen.COLOUR_RED
 
+OUTPUT_COLOR = Screen.COLOUR_BLUE
+INPUT_COLOR = Screen.COLOUR_CYAN
+
 
 def change_color(new_color):
     global DEFAULT_COLOR

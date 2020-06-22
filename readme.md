@@ -1,32 +1,21 @@
-# Mycroft Command Line GUI
+# Mycroft TUI
 
-CLI GUI
+Text-based User Interface for [Mycroft-core](https://github.com/MycroftAI/mycroft-core/)
 
 ```bash
-python -m jarbas_mycroft_gui
+python -m jarbas_mycroft_tui
 ```
 
 press X to exit
 
 
-![](preview.gif)
+![](gujbjbi.gif)
 
-![](help.png)
-
-![](variables.png)
-
-![](logs.png)
-
-![](network.png)
-
-![](bus.png)
-
-![](colors.gif)
 
 GUI debugger 
 
 ```bash
-python -m jarbas_mycroft_gui.debugger
+python -m jarbas_mycroft_tui.gui_debugger
 ```
 
 ![](simply_gui.png)

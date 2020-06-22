@@ -1,4 +1,4 @@
-from jarbas_mycroft_gui import DummyGUI
+from jarbas_mycroft_tui import DummyGUI
 from pyfiglet import Figlet
 from asciimatics.effects import Mirage, Print
 from os.path import dirname, join
@@ -7,19 +7,19 @@ from asciimatics.scene import Scene
 from asciimatics.exceptions import ResizeScreenError
 from asciimatics.screen import Screen
 import logging
-from jarbas_mycroft_gui.pages import VariablesScreen, TimeScreen, \
-    HelpScreen, LogsScreen, NetworkScreen, BusScreen
-from jarbas_mycroft_gui.settings import DEFAULT_COLOR
+from jarbas_mycroft_tui.pages import VariablesScreen, TimeScreen, \
+    HelpScreen, LogsScreen, NetworkScreen, BusScreen, ChatScreen, WIPScreen
+from jarbas_mycroft_tui.settings import DEFAULT_COLOR
 import sys
 logging.getLogger("mycroft_bus_client.client.client").setLevel("ERROR")
 logging.getLogger("asciimatics").setLevel("WARN")
 from jarbas_utils.log import LOG
 from jarbas_utils import create_daemon
 from time import sleep
-from jarbas_mycroft_gui.bus import fake_bus, Message
+from jarbas_mycroft_tui.bus import fake_bus, Message
 
 
-class MycroftGUI(DummyGUI):
+class MycroftTUI(DummyGUI):
     def __init__(self, refresh_rate=1, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.screen = None
@@ -44,11 +44,14 @@ class MycroftGUI(DummyGUI):
 
     def pages(self):
         scenes = [Scene([TimeScreen(self.screen, self)], -1, name="Time")]
-        scenes += [Scene([HelpScreen(self.screen, self)], -1, name="Help")]
         scenes += [Scene([LogsScreen(self.screen, self)], -1, name="Logs")]
         scenes += [Scene([NetworkScreen(self.screen, self)], -1,
                          name="Network")]
         scenes += [Scene([BusScreen(self.screen, self)], -1, name="Bus")]
+        scenes += [Scene([ChatScreen(self.screen, self)], -1, name="Chat")]
+        scenes += [Scene([VariablesScreen(self.screen, self)], -1,
+                         name="Variables")]
+        scenes += [Scene([WIPScreen(self.screen, self)], -1, name="WIP")]
 
         return scenes
 
@@ -57,7 +60,7 @@ class MycroftGUI(DummyGUI):
         effects = [
             Mirage(
                 self.screen,
-                FigletText("Mycroft GUI"),
+                FigletText("Mycroft TUI"),
                 self.screen.height // 2 - 3,
                 DEFAULT_COLOR,
                 start_frame=20,
@@ -99,8 +102,7 @@ class MycroftGUI(DummyGUI):
         intro = self.intro()
         scenes = self.pages()
         scenes += intro
-        scenes += [Scene([VariablesScreen(self.screen, self)], -1,
-                         name="Variables")]
+        scenes += [Scene([HelpScreen(self.screen, self)], -1, name="Help")]
         scenes += self.credits()
         self.screen.play(scenes,
                          repeat=False,
@@ -131,5 +133,5 @@ class MycroftGUI(DummyGUI):
 
 
 if __name__ == "__main__":
-    s = MycroftGUI()
+    s = MycroftTUI()
     s.run()

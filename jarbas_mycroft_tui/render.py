@@ -5,7 +5,7 @@ from rich.panel import Panel
 from rich.console import Console
 from rich.style import Style
 from art import text2art
-from jarbas_mycroft_gui.settings import TITLE_FONT
+from jarbas_mycroft_tui.settings import TITLE_FONT
 from collections.abc import Iterable
 
 
@@ -55,10 +55,11 @@ def pretty_var(var, data, return_str=True):
     return canvas.export_text()
 
 
-def pretty_dict(data, return_str=True, ignored_keys=None):
+def pretty_dict(data, return_str=True, ignored_keys=None, n_rows=1):
     ignored_keys = ignored_keys or []
     pretty = Columns([pretty_var(k, data[k], return_str=False)
-                      for k in data if k not in ignored_keys])
+                      for k in data if k not in ignored_keys],
+                     equal=True, expand=False)
     if not return_str:
         return pretty
     canvas = RichDraw()
