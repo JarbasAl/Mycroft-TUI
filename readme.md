@@ -9,7 +9,7 @@ python -m jarbas_mycroft_tui
 press X to exit
 
 
-![](gujbjbi.gif)
+![](gui.gif)
 
 
 GUI debugger 
